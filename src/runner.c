@@ -1,15 +1,24 @@
 #include "ipc.h"
 
 #include <fcntl.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-int main(void) {
+int main(int argc, char *argv[]) {
 	char my_fifo[128];
 	int my_fd;
+	int user_id;
 	RpcMessage submit_msg;
 	RpcMessage ack_msg;
+
+	if (argc < 3 || strcmp(argv[1], "-e") != 0) {
+		fprintf(stderr, "Usage: ./runner -e <user_id> command...\n");
+		return 1;
+	}
+
+	user_id = atoi(argv[2]);
 
 	snprintf(my_fifo, sizeof(my_fifo), "/tmp/runner_%d", getpid());
 
@@ -21,7 +30,7 @@ int main(void) {
 	memset(&submit_msg, 0, sizeof(submit_msg));
 	submit_msg.type = SUBMIT;
 	submit_msg.sender_pid = getpid();
-	submit_msg.user_id = 1;
+	submit_msg.user_id = user_id;
 
 	if (ipc_send_atomic(SERVER_FIFO_PATH, &submit_msg) == -1) {
 		perror("ipc_send_atomic");
