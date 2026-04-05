@@ -7,11 +7,11 @@ OBJ_DIR = obj
 BIN_DIR = bin
 TMP_DIR = tmp
 
-RUNNER_SOURCES = $(SRC_DIR)/runner.c $(SRC_DIR)/ipc.c
-CONTROLLER_SOURCES = $(SRC_DIR)/controller.c $(SRC_DIR)/ipc.c $(SRC_DIR)/parser.c $(SRC_DIR)/executor.c
+RUNNER_SOURCES = $(SRC_DIR)/runner.c $(SRC_DIR)/ipc.c $(SRC_DIR)/parser.c $(SRC_DIR)/executor.c
+CONTROLLER_SOURCES = $(SRC_DIR)/controller.c $(SRC_DIR)/ipc.c
 
-RUNNER_OBJECTS = $(OBJ_DIR)/runner.o $(OBJ_DIR)/ipc_runner.o
-CONTROLLER_OBJECTS = $(OBJ_DIR)/controller.o $(OBJ_DIR)/ipc_controller.o $(OBJ_DIR)/parser.o $(OBJ_DIR)/executor.o
+RUNNER_OBJECTS = $(OBJ_DIR)/runner.o $(OBJ_DIR)/ipc_runner.o $(OBJ_DIR)/parser.o $(OBJ_DIR)/executor.o
+CONTROLLER_OBJECTS = $(OBJ_DIR)/controller.o $(OBJ_DIR)/ipc_controller.o
 
 RUNNER_BIN = $(BIN_DIR)/runner
 CONTROLLER_BIN = $(BIN_DIR)/controller

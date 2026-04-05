@@ -1,4 +1,6 @@
 #include "ipc.h"
+#include "parser.h"
+#include "executor.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -13,6 +15,7 @@ int main(int argc, char *argv[]) {
 	size_t payload_len;
 	RpcMessage submit_msg;
 	RpcMessage ack_msg;
+	RpcMessage msg_done;
 
 	if (argc < 3 || strcmp(argv[1], "-e") != 0) {
 		fprintf(stderr, "Usage: ./runner -e <user_id> command...\n");
@@ -70,7 +73,37 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (ipc_read_blocking(my_fd, &ack_msg) == (ssize_t)sizeof(RpcMessage) && ack_msg.type == ACK) {
-		printf("[runner] command %ld submitted\n", ack_msg.command_id);
+		parsed_command_t *cmd;
+
+		printf("[runner] executing command %ld...\n", ack_msg.command_id);
+
+		cmd = parser_parse(submit_msg.payload);
+		if (cmd == NULL) {
+			fprintf(stderr, "parser_parse failed\n");
+		} else {
+			execute_pipeline(cmd);
+			parser_destroy(cmd);
+		}
+
+		memset(&msg_done, 0, sizeof(msg_done));
+		msg_done.type = DONE;
+		msg_done.sender_pid = getpid();
+		msg_done.user_id = ack_msg.user_id;
+		msg_done.command_id = ack_msg.command_id;
+
+		if (ipc_send_atomic(SERVER_FIFO_PATH, &msg_done) == -1) {
+			perror("ipc_send_atomic");
+			close(my_fd);
+			ipc_destroy_fifo(my_fifo);
+			return 1;
+		}
+
+		printf("[runner] command %ld finished\n", ack_msg.command_id);
+	} else {
+		fprintf(stderr, "runner did not receive ACK\n");
+		close(my_fd);
+		ipc_destroy_fifo(my_fifo);
+		return 1;
 	}
 
 	close(my_fd);

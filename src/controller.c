@@ -39,6 +39,10 @@ int main(void) {
 					perror("ipc_send_atomic");
 				}
 			}
+
+			if (msg.type == DONE) {
+				printf("O comando %ld do utilizador %d terminou.\n", msg.command_id, msg.user_id);
+			}
 		}
 
 		close(server_fd);
