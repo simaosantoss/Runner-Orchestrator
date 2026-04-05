@@ -5,16 +5,11 @@
 #define PARSER_MAX_ARGS 32
 #define PARSER_INPUT_BUFFER 1024
 
-typedef struct {
-	char *argv[PARSER_MAX_ARGS];
-} command_stage_t;
+typedef struct parsed_command parsed_command_t;
 
-typedef struct {
-	int num_stages;
-	command_stage_t stages[PARSER_MAX_STAGES];
-	char buffer[PARSER_INPUT_BUFFER];
-} parsed_command_t;
-
-void parse_command(const char *input, parsed_command_t *parsed);
+parsed_command_t* parser_parse(const char *input);
+int parser_get_stage_count(const parsed_command_t *cmd);
+char** parser_get_stage_argv(const parsed_command_t *cmd, int stage_idx);
+void parser_destroy(parsed_command_t *cmd);
 
 #endif /* PARSER_H */
