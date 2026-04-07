@@ -2,6 +2,7 @@
 #include "scheduler.h"
 
 #include <fcntl.h>
+#include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +16,7 @@ int main(int argc, char *argv[]) {
 	int is_shutting_down = 0;
 	pid_t shutdown_requester_pid = -1;
 	RpcMessage msg;
-	job_info_t dummy;
+	job_info_t finished_job;
 	job_queue_t *waiting_queue;
 	job_queue_t *running_queue;
 	long command_counter = 1;
@@ -71,6 +72,7 @@ int main(int argc, char *argv[]) {
 					RpcMessage resp;
 
 					job.state = JOB_RUNNING;
+					gettimeofday(&job.start_time, NULL);
 					if (!queue_enqueue(running_queue, &job)) {
 						fprintf(stderr, "failed to enqueue running job\n");
 						continue;
@@ -96,7 +98,22 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (msg.type == DONE) {
-				if (queue_remove_by_command_id(running_queue, msg.command_id, &dummy)) {
+				if (queue_remove_by_command_id(running_queue, msg.command_id, &finished_job)) {
+					struct timeval end_time;
+					long elapsed_ms;
+					int fd_log;
+					char log_buf[256];
+
+					gettimeofday(&end_time, NULL);
+					elapsed_ms = (end_time.tv_sec - finished_job.start_time.tv_sec) * 1000 + (end_time.tv_usec - finished_job.start_time.tv_usec) / 1000;
+
+					fd_log = open("log.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
+					if (fd_log != -1) {
+						snprintf(log_buf, sizeof(log_buf), "user-id %d - command-id %ld - %ld ms\n", finished_job.user_id, finished_job.command_id, elapsed_ms);
+						write(fd_log, log_buf, strlen(log_buf));
+						close(fd_log);
+					}
+
 					if (running_count > 0) {
 						running_count--;
 					}
@@ -114,6 +131,7 @@ int main(int argc, char *argv[]) {
 					}
 
 					next_job.state = JOB_RUNNING;
+					gettimeofday(&next_job.start_time, NULL);
 					if (!queue_enqueue(running_queue, &next_job)) {
 						fprintf(stderr, "failed to move job to running queue\n");
 						continue;

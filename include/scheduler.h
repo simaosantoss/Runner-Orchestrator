@@ -2,6 +2,7 @@
 #define SCHEDULER_H
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 typedef enum {
 	JOB_QUEUED,
@@ -13,6 +14,7 @@ typedef struct {
 	int user_id;
 	JobState state;
 	pid_t runner_pid;
+	struct timeval start_time;
 } job_info_t;
 
 typedef struct job_queue job_queue_t;
