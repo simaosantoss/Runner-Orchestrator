@@ -5,6 +5,9 @@
 
 typedef struct {
 	char *argv[PARSER_MAX_ARGS];
+	char *input_file;
+	char *output_file;
+	char *error_file;
 } command_stage_t;
 
 struct parsed_command {
@@ -41,12 +44,48 @@ parsed_command_t* parser_parse(const char *input) {
 
 		arg = strtok_r(stage_str, " ", &save_arg);
 		while (arg != NULL && argc < (PARSER_MAX_ARGS - 1)) {
-			stage->argv[argc] = strdup(arg);
-			if (stage->argv[argc] == NULL) {
-				parser_destroy(parsed);
-				return NULL;
+			if (strcmp(arg, "<") == 0) {
+				arg = strtok_r(NULL, " ", &save_arg);
+				if (arg == NULL) {
+					break;
+				}
+
+				stage->input_file = strdup(arg);
+				if (stage->input_file == NULL) {
+					parser_destroy(parsed);
+					return NULL;
+				}
+			} else if (strcmp(arg, ">") == 0) {
+				arg = strtok_r(NULL, " ", &save_arg);
+				if (arg == NULL) {
+					break;
+				}
+
+				stage->output_file = strdup(arg);
+				if (stage->output_file == NULL) {
+					parser_destroy(parsed);
+					return NULL;
+				}
+			} else if (strcmp(arg, "2>") == 0) {
+				arg = strtok_r(NULL, " ", &save_arg);
+				if (arg == NULL) {
+					break;
+				}
+
+				stage->error_file = strdup(arg);
+				if (stage->error_file == NULL) {
+					parser_destroy(parsed);
+					return NULL;
+				}
+			} else {
+				stage->argv[argc] = strdup(arg);
+				if (stage->argv[argc] == NULL) {
+					parser_destroy(parsed);
+					return NULL;
+				}
+				argc++;
 			}
-			argc++;
+
 			arg = strtok_r(NULL, " ", &save_arg);
 		}
 
@@ -74,6 +113,30 @@ char** parser_get_stage_argv(const parsed_command_t *cmd, int stage_idx) {
 	return (char **)cmd->stages[stage_idx].argv;
 }
 
+const char* parser_get_input_file(const parsed_command_t *cmd, int stage_idx) {
+	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
+		return NULL;
+	}
+
+	return cmd->stages[stage_idx].input_file;
+}
+
+const char* parser_get_output_file(const parsed_command_t *cmd, int stage_idx) {
+	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
+		return NULL;
+	}
+
+	return cmd->stages[stage_idx].output_file;
+}
+
+const char* parser_get_error_file(const parsed_command_t *cmd, int stage_idx) {
+	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
+		return NULL;
+	}
+
+	return cmd->stages[stage_idx].error_file;
+}
+
 void parser_destroy(parsed_command_t *cmd) {
 	int i;
 
@@ -87,6 +150,10 @@ void parser_destroy(parsed_command_t *cmd) {
 		for (j = 0; j < PARSER_MAX_ARGS && cmd->stages[i].argv[j] != NULL; j++) {
 			free(cmd->stages[i].argv[j]);
 		}
+
+		free(cmd->stages[i].input_file);
+		free(cmd->stages[i].output_file);
+		free(cmd->stages[i].error_file);
 	}
 
 	free(cmd);

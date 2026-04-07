@@ -1,5 +1,6 @@
 #include "executor.h"
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -60,6 +61,9 @@ int execute_pipeline(parsed_command_t *cmd) {
 
 		if (pid == 0) {
 			char **argv;
+			const char *in_file;
+			const char *out_file;
+			const char *err_file;
 
 			if (prev_read_fd != -1) {
 				if (dup2(prev_read_fd, STDIN_FILENO) == -1) {
@@ -88,6 +92,58 @@ int execute_pipeline(parsed_command_t *cmd) {
 			argv = parser_get_stage_argv(cmd, i);
 			if (argv == NULL || argv[0] == NULL) {
 				_exit(1);
+			}
+
+			in_file = parser_get_input_file(cmd, i);
+			out_file = parser_get_output_file(cmd, i);
+			err_file = parser_get_error_file(cmd, i);
+
+			if (in_file != NULL) {
+				int fd_in = open(in_file, O_RDONLY);
+				if (fd_in == -1) {
+					perror("open");
+					_exit(1);
+				}
+
+				if (dup2(fd_in, STDIN_FILENO) == -1) {
+					perror("dup2");
+					close(fd_in);
+					_exit(1);
+				}
+
+				close(fd_in);
+			}
+
+			if (out_file != NULL) {
+				int fd_out = open(out_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+				if (fd_out == -1) {
+					perror("open");
+					_exit(1);
+				}
+
+				if (dup2(fd_out, STDOUT_FILENO) == -1) {
+					perror("dup2");
+					close(fd_out);
+					_exit(1);
+				}
+
+				close(fd_out);
+			}
+
+			if (err_file != NULL) {
+				int fd_err = open(err_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+				if (fd_err == -1) {
+					perror("open");
+					_exit(1);
+				}
+
+				if (dup2(fd_err, STDERR_FILENO) == -1) {
+					perror("dup2");
+					close(fd_err);
+					_exit(1);
+				}
+
+				close(fd_err);
 			}
 
 			execvp(argv[0], argv);
