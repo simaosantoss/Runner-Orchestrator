@@ -13,7 +13,9 @@ typedef enum {
 	DONE,
 	STATUS_REQ,
 	STATUS_RESP,
-	STATUS_END
+	STATUS_END,
+	SHUTDOWN_REQ,
+	SHUTDOWN_ACK
 } MsgType;
 
 typedef struct {

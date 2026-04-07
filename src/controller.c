@@ -11,6 +11,9 @@ int main(int argc, char *argv[]) {
 	int server_fd;
 	int parallel_limit = 4;
 	int running_count = 0;
+	int keep_running = 1;
+	int is_shutting_down = 0;
+	pid_t shutdown_requester_pid = -1;
 	RpcMessage msg;
 	job_info_t dummy;
 	job_queue_t *waiting_queue;
@@ -40,7 +43,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	while (1) {
+	while (keep_running) {
 		server_fd = open(SERVER_FIFO_PATH, O_RDONLY);
 		if (server_fd == -1) {
 			perror("open server fifo");
@@ -50,6 +53,10 @@ int main(int argc, char *argv[]) {
 		}
 
 		while (ipc_read_blocking(server_fd, &msg) == (ssize_t)sizeof(RpcMessage)) {
+			if (msg.type == SUBMIT && is_shutting_down) {
+				continue;
+			}
+
 			if (msg.type == SUBMIT) {
 				job_info_t job;
 
@@ -189,10 +196,31 @@ int main(int argc, char *argv[]) {
 
 				close(fd_resp);
 			}
+
+			if (msg.type == SHUTDOWN_REQ) {
+				is_shutting_down = 1;
+				shutdown_requester_pid = msg.sender_pid;
+			}
+
+			if (is_shutting_down && running_count == 0 && queue_is_empty(waiting_queue)) {
+				char resp_fifo[128];
+				RpcMessage ack;
+
+				snprintf(resp_fifo, sizeof(resp_fifo), "/tmp/runner_%d", shutdown_requester_pid);
+				memset(&ack, 0, sizeof(ack));
+				ack.type = SHUTDOWN_ACK;
+				ipc_send_atomic(resp_fifo, &ack);
+				keep_running = 0;
+				break;
+			}
 		}
 
 		close(server_fd);
 	}
+
+	queue_destroy(waiting_queue);
+	queue_destroy(running_queue);
+	ipc_destroy_fifo(SERVER_FIFO_PATH);
 
 	return 0;
 }

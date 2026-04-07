@@ -60,6 +60,49 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+	if (argc == 2 && strcmp(argv[1], "-s") == 0) {
+		RpcMessage shutdown_req;
+
+		snprintf(my_fifo, sizeof(my_fifo), "/tmp/runner_%d", getpid());
+
+		if (ipc_create_fifo(my_fifo, 0666) == -1) {
+			perror("ipc_create_fifo");
+			return 1;
+		}
+
+		memset(&shutdown_req, 0, sizeof(shutdown_req));
+		shutdown_req.type = SHUTDOWN_REQ;
+		shutdown_req.sender_pid = getpid();
+
+		if (ipc_send_atomic(SERVER_FIFO_PATH, &shutdown_req) == -1) {
+			perror("ipc_send_atomic");
+			ipc_destroy_fifo(my_fifo);
+			return 1;
+		}
+
+		printf("[runner] sent shutdown notification\n");
+		printf("[runner] waiting for controller to shutdown...\n");
+
+		my_fd = open(my_fifo, O_RDONLY);
+		if (my_fd == -1) {
+			perror("open runner fifo");
+			ipc_destroy_fifo(my_fifo);
+			return 1;
+		}
+
+		while (ipc_read_blocking(my_fd, &status_msg) == (ssize_t)sizeof(RpcMessage)) {
+			if (status_msg.type == SHUTDOWN_ACK) {
+				break;
+			}
+		}
+
+		printf("[runner] controller exited.\n");
+
+		close(my_fd);
+		ipc_destroy_fifo(my_fifo);
+		return 0;
+	}
+
 	if (argc < 3 || strcmp(argv[1], "-e") != 0) {
 		fprintf(stderr, "Usage: ./runner -e <user_id> command...\n");
 		return 1;
