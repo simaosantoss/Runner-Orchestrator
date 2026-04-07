@@ -92,6 +92,42 @@ int queue_dequeue(job_queue_t *q, job_info_t *out_job) {
 	return 1;
 }
 
+int queue_dequeue_random(job_queue_t *q, job_info_t *out_job) {
+	int target_idx;
+	job_node_t *prev;
+	job_node_t *curr;
+
+	if (q == NULL || out_job == NULL || q->head == NULL) {
+		return 0;
+	}
+
+	target_idx = rand() % q->size;
+	if (target_idx == 0) {
+		return queue_dequeue(q, out_job);
+	}
+
+	prev = q->head;
+	curr = q->head->next;
+	for (int i = 1; i < target_idx && curr != NULL; i++) {
+		prev = curr;
+		curr = curr->next;
+	}
+
+	if (curr == NULL) {
+		return 0;
+	}
+
+	prev->next = curr->next;
+	if (curr->next == NULL) {
+		q->tail = prev;
+	}
+
+	*out_job = curr->job;
+	free(curr);
+	q->size--;
+	return 1;
+}
+
 int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_job) {
 	job_node_t *prev;
 	job_node_t *curr;

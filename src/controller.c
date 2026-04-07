@@ -3,6 +3,7 @@
 
 #include <fcntl.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,12 +21,20 @@ int main(int argc, char *argv[]) {
 	job_queue_t *waiting_queue;
 	job_queue_t *running_queue;
 	long command_counter = 1;
+	char policy[32] = "fcfs";
+
+	srand(time(NULL));
 
 	if (argc > 1) {
 		int parsed_limit = atoi(argv[1]);
 		if (parsed_limit > 0) {
 			parallel_limit = parsed_limit;
 		}
+	}
+
+	if (argc >= 3) {
+		strncpy(policy, argv[2], sizeof(policy) - 1);
+		policy[sizeof(policy) - 1] = '\0';
 	}
 
 	waiting_queue = queue_create();
@@ -125,8 +134,15 @@ int main(int argc, char *argv[]) {
 					char resp_fifo[128];
 					RpcMessage resp;
 					job_info_t next_job;
+					int dequeued;
 
-					if (!queue_dequeue(waiting_queue, &next_job)) {
+					if (strcmp(policy, "random") == 0) {
+						dequeued = queue_dequeue_random(waiting_queue, &next_job);
+					} else {
+						dequeued = queue_dequeue(waiting_queue, &next_job);
+					}
+
+					if (!dequeued) {
 						break;
 					}
 

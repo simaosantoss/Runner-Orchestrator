@@ -23,6 +23,7 @@ job_queue_t* queue_create();
 void queue_destroy(job_queue_t *q);
 int queue_enqueue(job_queue_t *q, const job_info_t *job);
 int queue_dequeue(job_queue_t *q, job_info_t *out_job);
+int queue_dequeue_random(job_queue_t *q, job_info_t *out_job);
 int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_job);
 int queue_is_empty(const job_queue_t *q);
 int queue_size(const job_queue_t *q);
