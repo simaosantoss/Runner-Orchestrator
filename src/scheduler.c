@@ -144,3 +144,22 @@ int queue_size(const job_queue_t *q) {
 
 	return q->size;
 }
+
+int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size) {
+	const job_node_t *curr;
+	int copied;
+
+	if (q == NULL || array == NULL || max_size <= 0) {
+		return 0;
+	}
+
+	curr = q->head;
+	copied = 0;
+	while (curr != NULL && copied < max_size) {
+		array[copied] = curr->job;
+		copied++;
+		curr = curr->next;
+	}
+
+	return copied;
+}

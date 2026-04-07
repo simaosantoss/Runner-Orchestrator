@@ -125,6 +125,70 @@ int main(int argc, char *argv[]) {
 					}
 				}
 			}
+
+			if (msg.type == STATUS_REQ) {
+				char resp_fifo[128];
+				int fd_resp;
+				RpcMessage status_resp;
+				RpcMessage status_end;
+				job_info_t run_arr[100];
+				job_info_t wait_arr[100];
+				int run_count;
+				int wait_count;
+
+				snprintf(resp_fifo, sizeof(resp_fifo), "/tmp/runner_%d", msg.sender_pid);
+
+				run_count = queue_copy_to_array(running_queue, run_arr, 100);
+				wait_count = queue_copy_to_array(waiting_queue, wait_arr, 100);
+				fd_resp = open(resp_fifo, O_WRONLY);
+				if (fd_resp == -1) {
+					perror("open response fifo");
+					continue;
+				}
+
+				memset(&status_resp, 0, sizeof(status_resp));
+				status_resp.type = STATUS_RESP;
+				status_resp.sender_pid = getpid();
+
+				snprintf(status_resp.payload, sizeof(status_resp.payload), "---Executing\n");
+				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
+					perror("write");
+					close(fd_resp);
+					continue;
+				}
+
+				for (int i = 0; i < run_count; i++) {
+					snprintf(status_resp.payload, sizeof(status_resp.payload), "user-id %d - command-id %ld\n", run_arr[i].user_id, run_arr[i].command_id);
+					if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
+						perror("write");
+						break;
+					}
+				}
+
+				snprintf(status_resp.payload, sizeof(status_resp.payload), "---Scheduled\n");
+				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
+					perror("write");
+					close(fd_resp);
+					continue;
+				}
+
+				for (int i = 0; i < wait_count; i++) {
+					snprintf(status_resp.payload, sizeof(status_resp.payload), "user-id %d - command-id %ld\n", wait_arr[i].user_id, wait_arr[i].command_id);
+					if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
+						perror("write");
+						break;
+					}
+				}
+
+				memset(&status_end, 0, sizeof(status_end));
+				status_end.type = STATUS_END;
+				status_end.sender_pid = getpid();
+				if (write(fd_resp, &status_end, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
+					perror("write");
+				}
+
+				close(fd_resp);
+			}
 		}
 
 		close(server_fd);

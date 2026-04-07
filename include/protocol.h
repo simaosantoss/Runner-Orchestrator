@@ -10,7 +10,10 @@ typedef enum {
 	STATUS,
 	SHUTDOWN,
 	ACK,
-	DONE
+	DONE,
+	STATUS_REQ,
+	STATUS_RESP,
+	STATUS_END
 } MsgType;
 
 typedef struct {
