@@ -8,10 +8,10 @@ BIN_DIR = bin
 TMP_DIR = tmp
 
 RUNNER_SOURCES = $(SRC_DIR)/runner.c $(SRC_DIR)/ipc.c $(SRC_DIR)/parser.c $(SRC_DIR)/executor.c
-CONTROLLER_SOURCES = $(SRC_DIR)/controller.c $(SRC_DIR)/ipc.c
+CONTROLLER_SOURCES = $(SRC_DIR)/controller.c $(SRC_DIR)/ipc.c $(SRC_DIR)/scheduler.c
 
 RUNNER_OBJECTS = $(OBJ_DIR)/runner.o $(OBJ_DIR)/ipc_runner.o $(OBJ_DIR)/parser.o $(OBJ_DIR)/executor.o
-CONTROLLER_OBJECTS = $(OBJ_DIR)/controller.o $(OBJ_DIR)/ipc_controller.o
+CONTROLLER_OBJECTS = $(OBJ_DIR)/controller.o $(OBJ_DIR)/ipc_controller.o $(OBJ_DIR)/scheduler.o
 
 RUNNER_BIN = $(BIN_DIR)/runner
 CONTROLLER_BIN = $(BIN_DIR)/controller
@@ -43,6 +43,9 @@ $(OBJ_DIR)/parser.o: $(SRC_DIR)/parser.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/executor.o: $(SRC_DIR)/executor.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/scheduler.o: $(SRC_DIR)/scheduler.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(RUNNER_BIN): $(RUNNER_OBJECTS) | $(BIN_DIR) $(TMP_DIR)
