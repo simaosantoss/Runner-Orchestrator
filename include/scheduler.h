@@ -27,6 +27,7 @@ int queue_dequeue_random(job_queue_t *q, job_info_t *out_job);
 int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_job);
 int queue_is_empty(const job_queue_t *q);
 int queue_size(const job_queue_t *q);
+int queue_get_size(const job_queue_t *q);
 int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size);
 
 #endif /* SCHEDULER_H */

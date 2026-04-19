@@ -167,18 +167,42 @@ int main(int argc, char *argv[]) {
 				int fd_resp;
 				RpcMessage status_resp;
 				RpcMessage status_end;
-				job_info_t run_arr[100];
-				job_info_t wait_arr[100];
+				job_info_t *run_arr = NULL;
+				job_info_t *wait_arr = NULL;
 				int run_count;
 				int wait_count;
+				int run_size;
+				int wait_size;
 
 				snprintf(resp_fifo, sizeof(resp_fifo), "/tmp/runner_%d", msg.sender_pid);
 
-				run_count = queue_copy_to_array(running_queue, run_arr, 100);
-				wait_count = queue_copy_to_array(waiting_queue, wait_arr, 100);
+				run_size = queue_get_size(running_queue);
+				wait_size = queue_get_size(waiting_queue);
+
+				if (run_size > 0) {
+					run_arr = malloc((size_t)run_size * sizeof(job_info_t));
+					if (run_arr == NULL) {
+						fprintf(stderr, "failed to allocate running queue snapshot\n");
+						continue;
+					}
+				}
+
+				if (wait_size > 0) {
+					wait_arr = malloc((size_t)wait_size * sizeof(job_info_t));
+					if (wait_arr == NULL) {
+						fprintf(stderr, "failed to allocate waiting queue snapshot\n");
+						free(run_arr);
+						continue;
+					}
+				}
+
+				run_count = queue_copy_to_array(running_queue, run_arr, run_size);
+				wait_count = queue_copy_to_array(waiting_queue, wait_arr, wait_size);
 				fd_resp = open(resp_fifo, O_WRONLY);
 				if (fd_resp == -1) {
 					perror("open response fifo");
+					free(run_arr);
+					free(wait_arr);
 					continue;
 				}
 
@@ -189,6 +213,8 @@ int main(int argc, char *argv[]) {
 				snprintf(status_resp.payload, sizeof(status_resp.payload), "---\nExecuting\n");
 				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
 					perror("write");
+					free(run_arr);
+					free(wait_arr);
 					close(fd_resp);
 					continue;
 				}
@@ -204,6 +230,8 @@ int main(int argc, char *argv[]) {
 				snprintf(status_resp.payload, sizeof(status_resp.payload), "---\nScheduled\n");
 				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
 					perror("write");
+					free(run_arr);
+					free(wait_arr);
 					close(fd_resp);
 					continue;
 				}
@@ -223,6 +251,8 @@ int main(int argc, char *argv[]) {
 					perror("write");
 				}
 
+				free(run_arr);
+				free(wait_arr);
 				close(fd_resp);
 			}
 

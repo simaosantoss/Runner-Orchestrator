@@ -181,6 +181,14 @@ int queue_size(const job_queue_t *q) {
 	return q->size;
 }
 
+int queue_get_size(const job_queue_t *q) {
+	if (q == NULL) {
+		return 0;
+	}
+
+	return q->size;
+}
+
 int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size) {
 	const job_node_t *curr;
 	int copied;
