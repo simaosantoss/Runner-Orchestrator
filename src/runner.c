@@ -161,6 +161,7 @@ int main(int argc, char *argv[]) {
 	if (ipc_read_blocking(my_fd, &ack_msg) == (ssize_t)sizeof(RpcMessage) && ack_msg.type == ACK) {
 		parsed_command_t *cmd;
 
+		printf("[runner] command %ld submitted\n", ack_msg.command_id);
 		printf("[runner] executing command %ld...\n", ack_msg.command_id);
 
 		cmd = parser_parse(submit_msg.payload);
