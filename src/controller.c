@@ -20,7 +20,6 @@ int main(int argc, char *argv[]) {
 	job_info_t finished_job;
 	job_queue_t *waiting_queue;
 	job_queue_t *running_queue;
-	long command_counter = 1;
 	char policy[32] = "fcfs";
 
 	srand(time(NULL));
@@ -71,17 +70,16 @@ int main(int argc, char *argv[]) {
 				job_info_t job;
 
 				memset(&job, 0, sizeof(job));
-				job.command_id = command_counter;
+				job.command_id = msg.command_id;
 				job.user_id = msg.user_id;
 				job.runner_pid = msg.sender_pid;
-				command_counter++;
+				gettimeofday(&job.start_time, NULL);
 
 				if (running_count < parallel_limit) {
 					char resp_fifo[128];
 					RpcMessage resp;
 
 					job.state = JOB_RUNNING;
-					gettimeofday(&job.start_time, NULL);
 					if (!queue_enqueue(running_queue, &job)) {
 						fprintf(stderr, "failed to enqueue running job\n");
 						continue;
@@ -145,7 +143,6 @@ int main(int argc, char *argv[]) {
 					}
 
 					next_job.state = JOB_RUNNING;
-					gettimeofday(&next_job.start_time, NULL);
 					if (!queue_enqueue(running_queue, &next_job)) {
 						fprintf(stderr, "failed to move job to running queue\n");
 						continue;
@@ -189,7 +186,7 @@ int main(int argc, char *argv[]) {
 				status_resp.type = STATUS_RESP;
 				status_resp.sender_pid = getpid();
 
-				snprintf(status_resp.payload, sizeof(status_resp.payload), "---Executing\n");
+				snprintf(status_resp.payload, sizeof(status_resp.payload), "---\nExecuting\n");
 				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
 					perror("write");
 					close(fd_resp);
@@ -204,7 +201,7 @@ int main(int argc, char *argv[]) {
 					}
 				}
 
-				snprintf(status_resp.payload, sizeof(status_resp.payload), "---Scheduled\n");
+				snprintf(status_resp.payload, sizeof(status_resp.payload), "---\nScheduled\n");
 				if (write(fd_resp, &status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
 					perror("write");
 					close(fd_resp);
