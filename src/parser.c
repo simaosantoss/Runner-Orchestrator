@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,6 +16,110 @@ struct parsed_command {
 	command_stage_t stages[PARSER_MAX_STAGES];
 	char buffer[PARSER_INPUT_BUFFER];
 };
+
+static const char* skip_spaces(const char *cursor) {
+	while (*cursor != '\0' && isspace((unsigned char)*cursor)) {
+		cursor++;
+	}
+
+	return cursor;
+}
+
+static char* duplicate_range(const char *start, size_t len) {
+	char *copy;
+
+	copy = malloc(len + 1);
+	if (copy == NULL) {
+		return NULL;
+	}
+
+	memcpy(copy, start, len);
+	copy[len] = '\0';
+	return copy;
+}
+
+static const char* parse_token(const char *cursor, char **out_token) {
+	const char *start;
+
+	cursor = skip_spaces(cursor);
+	if (*cursor == '\0' || *cursor == '<' || *cursor == '>') {
+		return NULL;
+	}
+
+	start = cursor;
+	while (*cursor != '\0' && !isspace((unsigned char)*cursor) && *cursor != '<' && *cursor != '>') {
+		cursor++;
+	}
+
+	*out_token = duplicate_range(start, (size_t)(cursor - start));
+	if (*out_token == NULL) {
+		return NULL;
+	}
+
+	return cursor;
+}
+
+static int parse_stage(command_stage_t *stage, char *stage_str) {
+	const char *cursor;
+	int argc;
+
+	cursor = stage_str;
+	argc = 0;
+
+	while (1) {
+		char *token;
+		char **redirect_target;
+		const char *next_cursor;
+
+		cursor = skip_spaces(cursor);
+		if (*cursor == '\0') {
+			break;
+		}
+
+		redirect_target = NULL;
+		if (cursor[0] == '2' && cursor[1] == '>') {
+			redirect_target = &stage->error_file;
+			cursor += 2;
+		} else if (*cursor == '<') {
+			redirect_target = &stage->input_file;
+			cursor++;
+		} else if (*cursor == '>') {
+			redirect_target = &stage->output_file;
+			cursor++;
+		}
+
+		if (redirect_target != NULL) {
+			token = NULL;
+			next_cursor = parse_token(cursor, &token);
+			if (next_cursor == NULL) {
+				return -1;
+			}
+
+			free(*redirect_target);
+			*redirect_target = token;
+			cursor = next_cursor;
+			continue;
+		}
+
+		token = NULL;
+		next_cursor = parse_token(cursor, &token);
+		if (next_cursor == NULL) {
+			return -1;
+		}
+
+		if (argc < (PARSER_MAX_ARGS - 1)) {
+			stage->argv[argc] = token;
+			argc++;
+		} else {
+			free(token);
+		}
+
+		cursor = next_cursor;
+	}
+
+	stage->argv[argc] = NULL;
+	return 0;
+}
 
 parsed_command_t* parser_parse(const char *input) {
 	parsed_command_t *parsed;
@@ -38,58 +143,11 @@ parsed_command_t* parser_parse(const char *input) {
 	stage_str = strtok_r(parsed->buffer, "|", &save_pipe);
 	while (stage_str != NULL && parsed->stage_count < PARSER_MAX_STAGES) {
 		command_stage_t *stage = &parsed->stages[parsed->stage_count];
-		char *save_arg = NULL;
-		char *arg;
-		int argc = 0;
-
-		arg = strtok_r(stage_str, " ", &save_arg);
-		while (arg != NULL && argc < (PARSER_MAX_ARGS - 1)) {
-			if (strcmp(arg, "<") == 0) {
-				arg = strtok_r(NULL, " ", &save_arg);
-				if (arg == NULL) {
-					break;
-				}
-
-				stage->input_file = strdup(arg);
-				if (stage->input_file == NULL) {
-					parser_destroy(parsed);
-					return NULL;
-				}
-			} else if (strcmp(arg, ">") == 0) {
-				arg = strtok_r(NULL, " ", &save_arg);
-				if (arg == NULL) {
-					break;
-				}
-
-				stage->output_file = strdup(arg);
-				if (stage->output_file == NULL) {
-					parser_destroy(parsed);
-					return NULL;
-				}
-			} else if (strcmp(arg, "2>") == 0) {
-				arg = strtok_r(NULL, " ", &save_arg);
-				if (arg == NULL) {
-					break;
-				}
-
-				stage->error_file = strdup(arg);
-				if (stage->error_file == NULL) {
-					parser_destroy(parsed);
-					return NULL;
-				}
-			} else {
-				stage->argv[argc] = strdup(arg);
-				if (stage->argv[argc] == NULL) {
-					parser_destroy(parsed);
-					return NULL;
-				}
-				argc++;
-			}
-
-			arg = strtok_r(NULL, " ", &save_arg);
+		if (parse_stage(stage, stage_str) == -1) {
+			parser_destroy(parsed);
+			return NULL;
 		}
 
-		stage->argv[argc] = NULL;
 		parsed->stage_count++;
 		stage_str = strtok_r(NULL, "|", &save_pipe);
 	}
