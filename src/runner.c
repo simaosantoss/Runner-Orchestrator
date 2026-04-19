@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (argc < 3 || strcmp(argv[1], "-e") != 0) {
-		fprintf(stderr, "Usage: ./runner -e <user_id> command...\n");
+		printf("Usage: ./runner -e <user_id> command...\n");
 		return 1;
 	}
 
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
 
 		cmd = parser_parse(submit_msg.payload);
 		if (cmd == NULL) {
-			fprintf(stderr, "parser_parse failed\n");
+			printf("parser_parse failed\n");
 		} else {
 			execute_pipeline(cmd);
 			parser_destroy(cmd);
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 
 		printf("[runner] command %ld finished\n", ack_msg.command_id);
 	} else {
-		fprintf(stderr, "runner did not receive ACK\n");
+		printf("runner did not receive ACK\n");
 		close(my_fd);
 		ipc_destroy_fifo(my_fifo);
 		return 1;

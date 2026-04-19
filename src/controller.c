@@ -128,8 +128,6 @@ int main(int argc, char *argv[]) {
 					}
 				}
 
-				printf("O comando %ld do utilizador %d terminou.\n", msg.command_id, msg.user_id);
-
 				while (running_count < parallel_limit && !queue_is_empty(waiting_queue)) {
 					char resp_fifo[128];
 					RpcMessage resp;
