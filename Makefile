@@ -55,5 +55,5 @@ $(CONTROLLER_BIN): $(CONTROLLER_OBJECTS) | $(BIN_DIR) $(TMP_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR) log.txt
+	rm -rf $(OBJ_DIR) $(BIN_DIR) log.txt $(TMP_DIR)/*
 	

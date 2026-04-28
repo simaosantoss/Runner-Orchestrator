@@ -23,7 +23,7 @@ typedef struct {
 	pid_t sender_pid;
 	int user_id;
 	long command_id;
-	char payload[300];
+	char payload[1024];
 } RpcMessage;
 
 #endif /* PROTOCOL_H */

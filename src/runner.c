@@ -148,6 +148,7 @@ int main(int argc, char *argv[]) {
 		if (cmd == NULL) {
 			printf("parser_parse failed\n");
 		} else {
+			fflush(stdout);
 			execute_pipeline(cmd);
 			parser_destroy(cmd);
 		}

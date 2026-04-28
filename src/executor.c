@@ -41,6 +41,7 @@ int execute_pipeline(parsed_command_t *cmd) {
 			}
 		}
 
+		fflush(stdout);
 		pid = fork();
 		if (pid < 0) {
 			perror("fork");
