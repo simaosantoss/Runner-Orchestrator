@@ -31,7 +31,7 @@ Após a compilação, os executáveis ficam disponíveis em:
 ./bin/runner
 ```
 
-Para limpar artefactos de compilação e ficheiros temporários:
+Para limpar os ficheiros gerados e temporários:
 
 ```bash
 make clean
@@ -144,7 +144,46 @@ Exemplo com operadores colados:
 cat count.txt
 ```
 
-### Comando Final: Encerramento Gracioso
+### Demonstração do Escalonador Aleatório (Random)
+
+Antes de demonstrar a política `random`, terminar o servidor atual caso ainda esteja em execução:
+
+```bash
+./bin/runner -s
+```
+
+De seguida, iniciar novamente o Controller com limite de 2 comandos em execução simultânea e política `random`:
+
+```bash
+./bin/controller 2 random
+```
+
+Submeter 4 tarefas rapidamente. Podem ser executadas em terminais separados ou enviadas para background:
+
+```bash
+./bin/runner -e 1 "sleep 8"
+./bin/runner -e 2 "sleep 8"
+./bin/runner -e 3 "sleep 8"
+./bin/runner -e 4 "sleep 8"
+```
+
+Consultar imediatamente o estado do sistema:
+
+```bash
+./bin/runner -c
+```
+
+Nesta fase, os comandos dos utilizadores 1 e 2 deverão aparecer na secção `Executing`, enquanto os comandos dos utilizadores 3 e 4 deverão aparecer na secção `Scheduled`.
+
+Após a conclusão dos primeiros comandos, uma nova consulta com:
+
+```bash
+./bin/runner -c
+```
+
+permite demonstrar a aleatoriedade do escalonador, uma vez que o servidor poderá promover o comando 4 antes do comando 3 para a secção de execução.
+
+### Comando Final: Encerramento
 
 Para pedir ao Controller que termine:
 
@@ -159,4 +198,3 @@ O Controller só termina depois de concluir os comandos pendentes e em execuçã
 [runner] waiting for controller to shutdown...
 [runner] controller exited.
 ```
-
