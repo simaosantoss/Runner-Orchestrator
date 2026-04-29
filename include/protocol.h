@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #define SERVER_FIFO_PATH "/tmp/server_fifo"
+#define RPC_PAYLOAD_SIZE 480
 
 typedef enum {
 	SUBMIT,
@@ -23,7 +24,7 @@ typedef struct {
 	pid_t sender_pid;
 	int user_id;
 	long command_id;
-	char payload[1024];
+	char payload[RPC_PAYLOAD_SIZE];
 } RpcMessage;
 
 #endif /* PROTOCOL_H */
