@@ -23,6 +23,22 @@ static void send_ack_to_runner(const job_info_t *job) {
 	}
 }
 
+static void send_shutdown_ack_to_runner(const RpcMessage *msg) {
+	char resp_fifo[128];
+	RpcMessage resp;
+
+	snprintf(resp_fifo, sizeof(resp_fifo), "/tmp/runner_%d", msg->sender_pid);
+	memset(&resp, 0, sizeof(resp));
+	resp.type = SHUTDOWN_ACK;
+	resp.sender_pid = getpid();
+	resp.user_id = msg->user_id;
+	resp.command_id = msg->command_id;
+
+	if (ipc_send_atomic(resp_fifo, &resp) == -1) {
+		perror("ipc_send_atomic");
+	}
+}
+
 static void start_waiting_jobs(controller_state_t *state) {
 	while (state->running_count < state->parallel_limit && !queue_is_empty(state->waiting_queue)) {
 		job_info_t next_job;
@@ -267,6 +283,7 @@ void controller_destroy_queues(controller_state_t *state) {
 
 int controller_handle_message(controller_state_t *state, const RpcMessage *msg) {
 	if (msg->type == SUBMIT && state->is_shutting_down) {
+		send_shutdown_ack_to_runner(msg);
 		return 0;
 	}
 
