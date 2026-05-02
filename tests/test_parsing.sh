@@ -8,7 +8,7 @@ Amarelo='\033[1;33m'
 SemCor='\033[0m'
 
 SERVER_PID=""
-FICHEIROS_TEMP="test_in.txt test_out.txt test_count.txt"
+FICHEIROS_TEMP="test_in.txt test_out.txt test_count.txt test_error.txt"
 
 cleanup() {
     if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -61,6 +61,14 @@ cat test_out.txt
 
 printf "%b[+] Conteúdo gerado em test_count.txt:%b\n" "$Verde" "$SemCor"
 cat test_count.txt
+
+printf "%b[*] A testar redirecionamento de erro (2>)...%b\n" "$Azul" "$SemCor"
+./bin/runner -e 1 "ls ficheiro_que_nao_existe 2>test_error.txt"
+
+sleep 1
+
+printf "%b[+] Conteúdo gerado em test_error.txt:%b\n" "$Verde" "$SemCor"
+cat test_error.txt
 
 printf "%b[*] A iniciar encerramento suave (-s)...%b\n" "$Azul" "$SemCor"
 ./bin/runner -s
