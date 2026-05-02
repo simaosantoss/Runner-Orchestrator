@@ -14,7 +14,7 @@ Este projeto implementa um sistema de orquestração de comandos baseado numa to
 
 - **Filas Encapsuladas**: o Controller usa estruturas de fila encapsuladas para manter os comandos em execução e os comandos em espera, separando a lógica de escalonamento da lógica de comunicação.
 
-- **Escalabilidade Dinâmica no `-c`**: a consulta de estado aloca dinamicamente memória com `malloc`, permitindo listar um número variável de comandos sem depender de um limite fixo pequeno.
+- **Escalabilidade Dinâmica no `-c`**: a consulta de estado cria snapshots das filas com `malloc` e envia a resposta em múltiplas mensagens `STATUS_RESP`, permitindo listar um número variável de comandos sem depender de um limite fixo pequeno.
 
 ## Como Compilar
 
@@ -41,7 +41,7 @@ make clean
 
 A pasta `tests/` contém scripts para validar automaticamente os principais comportamentos do sistema.
 
-- `test_parsing.sh`: valida o parser e a execução de comandos com redirecionamentos e pipes, incluindo operadores colados aos argumentos.
+- `test_parsing.sh`: valida o parser e a execução de comandos com redirecionamentos de entrada, saída e erro, e pipes, incluindo operadores colados aos argumentos.
 
 - `test_concurrency.sh`: valida o limite de concorrência do Controller e compara a execução com políticas de escalonamento diferentes, nomeadamente `fcfs` e `random`.
 
@@ -173,7 +173,7 @@ Consultar imediatamente o estado do sistema:
 ./bin/runner -c
 ```
 
-Nesta fase, os comandos dos utilizadores 1 e 2 deverão aparecer na secção `Executing`, enquanto os comandos dos utilizadores 3 e 4 deverão aparecer na secção `Scheduled`.
+Nesta fase, deverão aparecer até 2 comandos na secção `Executing`, enquanto os restantes comandos deverão aparecer na secção `Scheduled`.
 
 Após a conclusão dos primeiros comandos, uma nova consulta com:
 
