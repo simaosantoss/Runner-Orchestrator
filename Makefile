@@ -6,6 +6,8 @@ INCLUDE_DIR = include
 OBJ_DIR = obj
 BIN_DIR = bin
 TMP_DIR = tmp
+SERVER_FIFO = /tmp/server_fifo
+RUNNER_FIFOS = /tmp/runner_*
 
 RUNNER_SOURCES = \
 	$(SRC_DIR)/runner/runner.c \
@@ -48,4 +50,4 @@ $(CONTROLLER_BIN): $(CONTROLLER_OBJECTS) | $(BIN_DIR) $(TMP_DIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR) log.txt $(TMP_DIR)/*
+	rm -rf $(OBJ_DIR) $(BIN_DIR) log.txt $(TMP_DIR)/* $(SERVER_FIFO) $(RUNNER_FIFOS)
