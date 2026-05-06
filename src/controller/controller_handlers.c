@@ -39,6 +39,10 @@ static void send_shutdown_ack_to_runner(const RpcMessage *msg) {
 	}
 }
 
+static int is_fair_policy(const controller_state_t *state) {
+	return strcmp(state->policy, "fair") == 0;
+}
+
 static void start_waiting_jobs(controller_state_t *state) {
 	while (state->running_count < state->parallel_limit && !queue_is_empty(state->waiting_queue)) {
 		job_info_t next_job;
@@ -46,6 +50,8 @@ static void start_waiting_jobs(controller_state_t *state) {
 
 		if (strcmp(state->policy, "random") == 0) {
 			dequeued = queue_dequeue_random(state->waiting_queue, &next_job);
+		} else if (is_fair_policy(state)) {
+			dequeued = queue_dequeue_fair(state->waiting_queue, &state->last_scheduled_user, &next_job);
 		} else {
 			dequeued = queue_dequeue(state->waiting_queue, &next_job);
 		}
@@ -61,6 +67,7 @@ static void start_waiting_jobs(controller_state_t *state) {
 		}
 
 		state->running_count++;
+		state->last_scheduled_user = next_job.user_id;
 		send_ack_to_runner(&next_job);
 	}
 }
@@ -82,6 +89,7 @@ static void handle_submit(controller_state_t *state, const RpcMessage *msg) {
 		}
 
 		state->running_count++;
+		state->last_scheduled_user = job.user_id;
 		send_ack_to_runner(&job);
 	} else {
 		job.state = JOB_QUEUED;
@@ -177,7 +185,11 @@ static void handle_status_req(controller_state_t *state, const RpcMessage *msg) 
 	}
 
 	run_count = queue_copy_to_array(state->running_queue, run_arr, run_size);
-	wait_count = queue_copy_to_array(state->waiting_queue, wait_arr, wait_size);
+	if (is_fair_policy(state)) {
+		wait_count = queue_copy_fair_to_array(state->waiting_queue, wait_arr, wait_size, state->last_scheduled_user);
+	} else {
+		wait_count = queue_copy_to_array(state->waiting_queue, wait_arr, wait_size);
+	}
 	fd_resp = open(resp_fifo, O_WRONLY);
 	if (fd_resp == -1) {
 		perror("open response fifo");
@@ -248,6 +260,7 @@ void controller_configure(controller_state_t *state, int argc, char *argv[]) {
 	state->keep_running = 1;
 	state->is_shutting_down = 0;
 	state->shutdown_requester_pid = -1;
+	state->last_scheduled_user = -1;
 	strcpy(state->policy, "fcfs");
 
 	if (argc > 1) {

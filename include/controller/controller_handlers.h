@@ -10,6 +10,7 @@ typedef struct {
 	int keep_running;
 	int is_shutting_down;
 	pid_t shutdown_requester_pid;
+	int last_scheduled_user;
 	job_queue_t *waiting_queue;
 	job_queue_t *running_queue;
 	char policy[32];

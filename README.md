@@ -14,6 +14,8 @@ Este projeto implementa um sistema de orquestração de comandos baseado numa to
 
 - **Filas Encapsuladas**: o Controller usa estruturas de fila encapsuladas para manter os comandos em execução e os comandos em espera, separando a lógica de escalonamento da lógica de comunicação.
 
+- **Políticas de Escalonamento**: o Controller suporta as políticas `fcfs`, `random` e `fair`. A política `fair` alterna entre utilizadores com comandos pendentes na escolha do próximo comando a autorizar, sem interromper comandos que já estejam em execução.
+
 - **Escalabilidade Dinâmica no `-c`**: a consulta de estado cria snapshots das filas com `malloc` e envia a resposta em múltiplas mensagens `STATUS_RESP`, permitindo listar um número variável de comandos sem depender de um limite fixo pequeno.
 
 ## Como Compilar
@@ -45,6 +47,8 @@ A pasta `tests/` contém scripts para validar automaticamente os principais comp
 
 - `test_concurrency.sh`: valida o limite de concorrência do Controller e compara a execução com políticas de escalonamento diferentes, nomeadamente `fcfs` e `random`.
 
+- `test_fair.sh`: valida a política `fair`, confirmando que um utilizador que chega depois não fica bloqueado atrás de todos os comandos já pendentes de outro utilizador.
+
 - `test_stress.sh`: submete uma carga elevada de comandos concorrentes para confirmar que o sistema suporta filas grandes e que a consulta `-c` escala dinamicamente.
 
 Para correr os testes:
@@ -52,6 +56,7 @@ Para correr os testes:
 ```bash
 ./tests/test_parsing.sh
 ./tests/test_concurrency.sh
+./tests/test_fair.sh
 ./tests/test_stress.sh
 ```
 
@@ -123,6 +128,8 @@ Scheduled
 user-id 3 - command-id 12347
 ```
 
+Com a política `fcfs`, os comandos em espera aparecem pela ordem de chegada. Com a política `fair`, a secção `Scheduled` apresenta os comandos pela ordem em que seriam escolhidos, alternando entre utilizadores com comandos pendentes.
+
 ### Demonstração de Pipes e Redirecionamentos
 
 Também é possível demonstrar operadores da linha de comandos suportados pelo parser:
@@ -182,6 +189,31 @@ Após a conclusão dos primeiros comandos, uma nova consulta com:
 ```
 
 permite demonstrar a aleatoriedade do escalonador, uma vez que o servidor poderá promover o comando 4 antes do comando 3 para a secção de execução.
+
+### Demonstração da Política Fair
+
+Antes de demonstrar a política `fair`, terminar o servidor atual caso ainda esteja em execução:
+
+```bash
+./bin/runner -s
+```
+
+De seguida, iniciar novamente o Controller com limite de 1 comando em execução simultânea e política `fair`:
+
+```bash
+./bin/controller 1 fair
+```
+
+Submeter vários comandos do utilizador 1 e depois um comando do utilizador 2:
+
+```bash
+./bin/runner -e 1 "sleep 5"
+./bin/runner -e 1 "sleep 5"
+./bin/runner -e 1 "sleep 5"
+./bin/runner -e 2 "sleep 5"
+```
+
+Quando houver uma vaga, o Controller deve alternar para o utilizador 2 antes de continuar a autorizar os restantes comandos do utilizador 1. Esta política não usa fatias de tempo nem interrompe processos já iniciados; apenas decide de forma justa qual é o próximo comando em espera a passar para execução.
 
 ### Comando Final: Encerramento
 
