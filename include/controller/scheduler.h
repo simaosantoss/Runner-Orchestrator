@@ -24,12 +24,12 @@ void queue_destroy(job_queue_t *q);
 int queue_enqueue(job_queue_t *q, const job_info_t *job);
 int queue_dequeue(job_queue_t *q, job_info_t *out_job);
 int queue_dequeue_random(job_queue_t *q, job_info_t *out_job);
-int queue_dequeue_fair(job_queue_t *q, int *last_user_id, job_info_t *out_job);
+int queue_dequeue_fair(job_queue_t *q, const int *fair_users, int fair_user_count, int *last_user_id, job_info_t *out_job);
 int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_job);
 int queue_is_empty(const job_queue_t *q);
 int queue_size(const job_queue_t *q);
 int queue_get_size(const job_queue_t *q);
 int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size);
-int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_size, int last_user_id);
+int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_size, int last_user_id, const int *fair_users, int fair_user_count);
 
 #endif /* SCHEDULER_H */

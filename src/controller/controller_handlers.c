@@ -43,6 +43,37 @@ static int is_fair_policy(const controller_state_t *state) {
 	return strcmp(state->policy, "fair") == 0;
 }
 
+static void remember_fair_user(controller_state_t *state, int user_id) {
+	for (int i = 0; i < state->fair_user_count; i++) {
+		if (state->fair_users[i] == user_id) {
+			return;
+		}
+	}
+
+	if (state->fair_user_count == state->fair_user_capacity) {
+		int new_capacity;
+		int *new_users;
+
+		if (state->fair_user_capacity == 0) {
+			new_capacity = 8;
+		} else {
+			new_capacity = state->fair_user_capacity * 2;
+		}
+
+		new_users = realloc(state->fair_users, (size_t)new_capacity * sizeof(int));
+		if (new_users == NULL) {
+			perror("realloc");
+			return;
+		}
+
+		state->fair_users = new_users;
+		state->fair_user_capacity = new_capacity;
+	}
+
+	state->fair_users[state->fair_user_count] = user_id;
+	state->fair_user_count++;
+}
+
 static void start_waiting_jobs(controller_state_t *state) {
 	while (state->running_count < state->parallel_limit && !queue_is_empty(state->waiting_queue)) {
 		job_info_t next_job;
@@ -51,7 +82,7 @@ static void start_waiting_jobs(controller_state_t *state) {
 		if (strcmp(state->policy, "random") == 0) {
 			dequeued = queue_dequeue_random(state->waiting_queue, &next_job);
 		} else if (is_fair_policy(state)) {
-			dequeued = queue_dequeue_fair(state->waiting_queue, &state->last_scheduled_user, &next_job);
+			dequeued = queue_dequeue_fair(state->waiting_queue, state->fair_users, state->fair_user_count, &state->last_scheduled_user, &next_job);
 		} else {
 			dequeued = queue_dequeue(state->waiting_queue, &next_job);
 		}
@@ -80,6 +111,7 @@ static void handle_submit(controller_state_t *state, const RpcMessage *msg) {
 	job.user_id = msg->user_id;
 	job.runner_pid = msg->sender_pid;
 	gettimeofday(&job.start_time, NULL);
+	remember_fair_user(state, job.user_id);
 
 	if (state->running_count < state->parallel_limit) {
 		job.state = JOB_RUNNING;
@@ -186,7 +218,7 @@ static void handle_status_req(controller_state_t *state, const RpcMessage *msg) 
 
 	run_count = queue_copy_to_array(state->running_queue, run_arr, run_size);
 	if (is_fair_policy(state)) {
-		wait_count = queue_copy_fair_to_array(state->waiting_queue, wait_arr, wait_size, state->last_scheduled_user);
+		wait_count = queue_copy_fair_to_array(state->waiting_queue, wait_arr, wait_size, state->last_scheduled_user, state->fair_users, state->fair_user_count);
 	} else {
 		wait_count = queue_copy_to_array(state->waiting_queue, wait_arr, wait_size);
 	}
@@ -261,6 +293,9 @@ void controller_configure(controller_state_t *state, int argc, char *argv[]) {
 	state->is_shutting_down = 0;
 	state->shutdown_requester_pid = -1;
 	state->last_scheduled_user = -1;
+	state->fair_users = NULL;
+	state->fair_user_count = 0;
+	state->fair_user_capacity = 0;
 	strcpy(state->policy, "fcfs");
 
 	if (argc > 1) {
@@ -292,6 +327,10 @@ void controller_destroy_queues(controller_state_t *state) {
 	queue_destroy(state->running_queue);
 	state->waiting_queue = NULL;
 	state->running_queue = NULL;
+	free(state->fair_users);
+	state->fair_users = NULL;
+	state->fair_user_count = 0;
+	state->fair_user_capacity = 0;
 }
 
 int controller_handle_message(controller_state_t *state, const RpcMessage *msg) {

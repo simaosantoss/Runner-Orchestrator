@@ -161,7 +161,36 @@ static int choose_next_user(const int *users, int user_count, int last_user_id) 
 	return users[last_idx + 1];
 }
 
-int queue_dequeue_fair(job_queue_t *q, int *last_user_id, job_info_t *out_job) {
+static int choose_next_fair_user(const int *active_users, int active_user_count, const int *fair_users, int fair_user_count, int last_user_id) {
+	int last_idx;
+
+	if (active_user_count <= 0) {
+		return -1;
+	}
+
+	if (fair_users == NULL || fair_user_count <= 0) {
+		return choose_next_user(active_users, active_user_count, last_user_id);
+	}
+
+	last_idx = -1;
+	for (int i = 0; i < fair_user_count; i++) {
+		if (fair_users[i] == last_user_id) {
+			last_idx = i;
+			break;
+		}
+	}
+
+	for (int offset = 1; offset <= fair_user_count; offset++) {
+		int idx = (last_idx + offset + fair_user_count) % fair_user_count;
+		if (user_exists(active_users, active_user_count, fair_users[idx])) {
+			return fair_users[idx];
+		}
+	}
+
+	return active_users[0];
+}
+
+int queue_dequeue_fair(job_queue_t *q, const int *fair_users, int fair_user_count, int *last_user_id, job_info_t *out_job) {
 	int *users;
 	int user_count;
 	int target_user;
@@ -189,7 +218,7 @@ int queue_dequeue_fair(job_queue_t *q, int *last_user_id, job_info_t *out_job) {
 		}
 	}
 
-	target_user = choose_next_user(users, user_count, *last_user_id);
+	target_user = choose_next_fair_user(users, user_count, fair_users, fair_user_count, *last_user_id);
 	free(users);
 
 	prev = NULL;
@@ -301,7 +330,7 @@ int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size) {
 	return copied;
 }
 
-int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_size, int last_user_id) {
+int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_size, int last_user_id, const int *fair_users, int fair_user_count) {
 	job_info_t *jobs;
 	int *used;
 	int copied;
@@ -343,7 +372,7 @@ int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_si
 			}
 		}
 
-		target_user = choose_next_user(users, user_count, current_last_user);
+		target_user = choose_next_fair_user(users, user_count, fair_users, fair_user_count, current_last_user);
 		free(users);
 
 		if (target_user == -1) {

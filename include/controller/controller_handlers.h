@@ -11,6 +11,9 @@ typedef struct {
 	int is_shutting_down;
 	pid_t shutdown_requester_pid;
 	int last_scheduled_user;
+	int *fair_users;
+	int fair_user_count;
+	int fair_user_capacity;
 	job_queue_t *waiting_queue;
 	job_queue_t *running_queue;
 	char policy[32];
