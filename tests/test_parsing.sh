@@ -10,6 +10,11 @@ SemCor='\033[0m'
 SERVER_PID=""
 FICHEIROS_TEMP="test_in.txt test_out.txt test_count.txt test_error.txt"
 
+fail() {
+    printf "%b[!] %s%b\n" "$Amarelo" "$1" "$SemCor"
+    exit 1
+}
+
 cleanup() {
     if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
         kill "$SERVER_PID" 2>/dev/null
@@ -49,12 +54,21 @@ if ! kill -0 "$SERVER_PID" 2>/dev/null; then
 fi
 
 printf "%b[*] A testar redirecionamento de saída sem espaços....%b\n" "$Azul" "$SemCor"
-./bin/runner -e 1 "echo OlaMundo>test_out.txt"
+./bin/runner -e 1 "echo OlaMundo>test_out.txt" || fail "O runner falhou no teste de redirecionamento de saída."
+
+if [ "$(cat test_out.txt 2>/dev/null)" != "OlaMundo" ]; then
+    fail "Esperava que test_out.txt contivesse 'OlaMundo'."
+fi
 
 printf "%b[*] A testar redirecionamento de entrada e pipe sem espaços....%b\n" "$Azul" "$SemCor"
-./bin/runner -e 1 "cat<test_in.txt|wc -l>test_count.txt"
+./bin/runner -e 1 "cat<test_in.txt|wc -l>test_count.txt" || fail "O runner falhou no teste de pipe com redirecionamentos."
 
 sleep 1
+
+COUNT_RESULT=$(tr -d '[:space:]' < test_count.txt 2>/dev/null)
+if [ "$COUNT_RESULT" != "3" ]; then
+    fail "Esperava que test_count.txt contivesse a contagem 3, mas obtive '${COUNT_RESULT:-vazio}'."
+fi
 
 printf "%b[+] Conteúdo gerado em test_out.txt:%b\n" "$Verde" "$SemCor"
 cat test_out.txt
@@ -63,9 +77,13 @@ printf "%b[+] Conteúdo gerado em test_count.txt:%b\n" "$Verde" "$SemCor"
 cat test_count.txt
 
 printf "%b[*] A testar redirecionamento de erro (2>)...%b\n" "$Azul" "$SemCor"
-./bin/runner -e 1 "ls ficheiro_que_nao_existe 2>test_error.txt"
+./bin/runner -e 1 "ls ficheiro_que_nao_existe 2>test_error.txt" || true
 
 sleep 1
+
+if ! grep -q "ficheiro_que_nao_existe" test_error.txt; then
+    fail "Esperava encontrar a mensagem de erro do ls em test_error.txt."
+fi
 
 printf "%b[+] Conteúdo gerado em test_error.txt:%b\n" "$Verde" "$SemCor"
 cat test_error.txt

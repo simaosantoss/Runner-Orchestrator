@@ -45,7 +45,9 @@ A pasta `tests/` contém scripts para validar automaticamente os principais comp
 
 - `test_parsing.sh`: valida o parser e a execução de comandos com redirecionamentos de entrada, saída e erro, e pipes, incluindo operadores colados aos argumentos.
 
-- `test_concurrency.sh`: valida o limite de concorrência do Controller e compara a execução com políticas de escalonamento diferentes, nomeadamente `fcfs` e `random`.
+- `test_fcfs.sh`: valida o limite de concorrência do Controller e a ordem de escalonamento da política `fcfs`.
+
+- `test_random.sh`: valida a política `random` em várias rondas, confirmando ordens não determinísticas sem perdas nem duplicados.
 
 - `test_fair.sh`: valida a política `fair`, confirmando que um utilizador que chega depois não fica bloqueado atrás de todos os comandos já pendentes de outro utilizador.
 
@@ -55,7 +57,8 @@ Para correr os testes:
 
 ```bash
 ./tests/test_parsing.sh
-./tests/test_concurrency.sh
+./tests/test_fcfs.sh
+./tests/test_random.sh
 ./tests/test_fair.sh
 ./tests/test_stress.sh
 ```
