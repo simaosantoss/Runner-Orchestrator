@@ -1,6 +1,6 @@
-# Runner-Orchestrator
+# 🧭 Runner-Orchestrator
 
-## About
+## 📌 About
 
 **Runner-Orchestrator** is a multi-runner command orchestration environment developed for the Operating Systems course, a 2nd-year, 2nd-semester course in the Software Engineering degree at the University of Minho, academic year 2025/2026.
 
@@ -22,7 +22,7 @@ This repository is especially focused on Operating Systems concepts:
 - scheduling policies, queues, concurrency limits, and controlled shutdown;
 - automated validation of IPC, parsing, scheduling, and stress scenarios.
 
-## What This Project Demonstrates
+## 🧠 What This Project Demonstrates
 
 This is not just a command runner. It is a small orchestration system that exercises the core primitives expected in an Operating Systems project.
 
@@ -39,7 +39,7 @@ This is not just a command runner. It is a small orchestration system that exerc
 | Parsing | manual parser for `>`, `2>`, `<`, and `\|`, including operators attached to arguments |
 | Testing | Bash test scripts for parsing, policies, IPC stress, and scheduling behavior |
 
-## System Overview
+## 🧩 System Overview
 
 The system is composed of two executables:
 
@@ -56,7 +56,7 @@ This keeps responsibilities separated:
 - the `runner` handles command parsing, process creation, pipes, redirections, and command output;
 - command output naturally appears in the user's terminal because the executed child processes inherit the runner's standard descriptors.
 
-## Architecture
+## 🏗️ Architecture
 
 ```text
 User terminal
@@ -88,7 +88,7 @@ DONE notification
 controller logs completion time and starts next waiting job
 ```
 
-## IPC Protocol
+## 🔗 IPC Protocol
 
 The `runner` and `controller` communicate using fixed-size `RpcMessage` structures through FIFOs.
 
@@ -114,7 +114,7 @@ The protocol uses message types such as:
 
 The message payload size is deliberately bounded so each `RpcMessage` can be sent with a single `write()` call and remain within the atomic write guarantees associated with `PIPE_BUF`.
 
-## Supported Runner Modes
+## 🎛️ Supported Runner Modes
 
 ```bash
 ./bin/runner -e <user-id> "<command>"
@@ -128,7 +128,7 @@ The message payload size is deliberately bounded so each `RpcMessage` can be sen
 | `-c` | Query commands currently executing and waiting |
 | `-s` | Request controlled controller shutdown |
 
-## Scheduling Policies
+## ⚖️ Scheduling Policies
 
 The controller supports three scheduling policies.
 
@@ -140,7 +140,7 @@ The controller supports three scheduling policies.
 
 The `fair` policy is **non-preemptive**: it does not suspend or resume already running commands. It only decides which waiting command should receive the next authorization.
 
-## Command Execution
+## ⚙️ Command Execution
 
 Command execution happens inside the `runner`, after an `ACK` from the controller.
 
@@ -157,7 +157,7 @@ The runner:
 
 No `system()` call is used, and commands are not delegated to `bash` or another shell.
 
-## Supported Operators
+## 🧵 Supported Operators
 
 The manual parser supports the operators required by the assignment:
 
@@ -176,7 +176,7 @@ Operators can appear attached to arguments, for example:
 
 The parser does not try to implement a complete Bash grammar. It intentionally implements the subset required by the project statement.
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 Makefile
@@ -217,7 +217,7 @@ tests/
   test_stress.sh            IPC and status response stress test
 ```
 
-## Build
+## 🛠️ Build
 
 The project is written in C and uses a simple `Makefile`.
 
@@ -238,7 +238,7 @@ Clean generated files, logs, and runtime FIFOs:
 make clean
 ```
 
-## Usage
+## 🚀 Usage
 
 Start the controller:
 
@@ -286,7 +286,7 @@ Request controlled shutdown:
 
 The controller only exits after all running and waiting commands have completed.
 
-## Quick Demo
+## 🖥️ Quick Demo
 
 Terminal 1:
 
@@ -345,7 +345,7 @@ Fair scheduling example:
 
 With `fair`, users 2 and 3 should not remain behind all remaining commands from user 1.
 
-## Automated Tests
+## ✅ Automated Tests
 
 Run all tests individually:
 
@@ -369,7 +369,7 @@ The tests validate:
 
 The stress test starts a controller with a parallelism limit of 10 and submits 150 `sleep` commands. Shutdown may appear to wait, but this is expected: the controller only exits after all pending and running jobs are completed.
 
-## Persistent Log
+## 🧾 Persistent Log
 
 The controller writes completed commands to `log.txt`.
 
@@ -381,7 +381,7 @@ user-id <id> - command-id <id> - <duration> ms
 
 The measured duration is the command turnaround time from the moment the controller receives the submission until it receives the final `DONE` notification.
 
-## Validation Summary
+## 🔍 Validation Summary
 
 The project was validated through:
 
@@ -393,7 +393,7 @@ The project was validated through:
 - policy tests for `fcfs`, `random`, and `fair`;
 - inspection of `log.txt` turnaround-time behavior.
 
-## What I Learned
+## 📚 What I Learned
 
 This project was mainly an exercise in understanding how UNIX-like systems expose powerful low-level mechanisms through small, composable system calls.
 
@@ -409,7 +409,7 @@ The most important takeaways were:
 - how shutdown protocols need to account for pending work;
 - how to validate concurrent behavior with repeatable scripts.
 
-## AI-Assisted Development
+## 🤖 AI-Assisted Development
 
 AI tools were used only to help generate the Bash test scripts. This usage was allowed by the assignment rules, provided that it did not replace the implementation of the core Operating Systems concepts.
 
@@ -417,7 +417,7 @@ The main project logic, architecture, use of system calls, IPC protocol, parser,
 
 All generated test scripts were reviewed, executed, and validated by the group. The prompts used for the test scripts are included in the submitted Portuguese report.
 
-## Limitations
+## ⚠️ Limitations
 
 The parser intentionally supports only the subset required by the assignment:
 
@@ -438,6 +438,6 @@ It does not implement full Bash behavior such as:
 
 This was a deliberate scope decision: the project focus was Operating Systems primitives, not building a complete shell.
 
-## Authors
+## 👥 Authors
 
 - [Simão Santos](https://github.com/simaosantoss)
