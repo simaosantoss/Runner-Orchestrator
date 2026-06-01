@@ -10,10 +10,23 @@
 #include <string.h>
 #include <unistd.h>
 
+/**
+ * @brief Build the private FIFO path for the current runner process.
+ *
+ * @param buffer Destination buffer.
+ * @param buffer_size Size of the destination buffer.
+ */
 static void runner_fifo_path(char *buffer, size_t buffer_size) {
 	snprintf(buffer, buffer_size, "/tmp/runner_%d", getpid());
 }
 
+/**
+ * @brief Create the private FIFO used by this runner to receive controller replies.
+ *
+ * @param my_fifo Buffer that receives the FIFO path.
+ * @param fifo_size Size of my_fifo.
+ * @return 0 on success, -1 on FIFO creation failure.
+ */
 static int create_runner_fifo(char *my_fifo, size_t fifo_size) {
 	runner_fifo_path(my_fifo, fifo_size);
 
@@ -25,6 +38,14 @@ static int create_runner_fifo(char *my_fifo, size_t fifo_size) {
 	return 0;
 }
 
+/**
+ * @brief Parse the runner command-line interface.
+ *
+ * @param argc Argument count passed to runner main().
+ * @param argv Argument vector passed to runner main().
+ * @param request Output structure filled with mode, user id and command.
+ * @return 0 on valid usage, non-zero otherwise.
+ */
 int runner_parse_args(int argc, char *argv[], runner_request_t *request) {
 	if (request == NULL) {
 		printf("Usage: ./runner -e <user_id> \"<command...>\"\n");
@@ -54,6 +75,11 @@ int runner_parse_args(int argc, char *argv[], runner_request_t *request) {
 	return 0;
 }
 
+/**
+ * @brief Execute runner -c by asking the controller for current state.
+ *
+ * @return 0 on success, non-zero on FIFO/IPC failure.
+ */
 int runner_run_status(void) {
 	char my_fifo[128];
 	int my_fd;
@@ -96,6 +122,11 @@ int runner_run_status(void) {
 	return 0;
 }
 
+/**
+ * @brief Execute runner -s by requesting controlled controller shutdown.
+ *
+ * @return 0 on success, non-zero on FIFO/IPC failure.
+ */
 int runner_run_shutdown(void) {
 	char my_fifo[128];
 	int my_fd;
@@ -139,6 +170,16 @@ int runner_run_shutdown(void) {
 	return 0;
 }
 
+/**
+ * @brief Execute runner -e by submitting and running a command.
+ *
+ * The runner first sends SUBMIT, waits for ACK, parses and executes the
+ * command locally, and finally sends DONE back to the controller.
+ *
+ * @param user_id User identifier to send with the command.
+ * @param command Command string to execute after authorization.
+ * @return 0 on success, non-zero on communication or execution setup failure.
+ */
 int runner_run_execute(int user_id, const char *command) {
 	char my_fifo[128];
 	int my_fd;

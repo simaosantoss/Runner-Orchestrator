@@ -5,6 +5,17 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/**
+ * @brief Execute all stages of a parsed pipeline.
+ *
+ * For each stage, this function creates a child process with fork(), connects
+ * pipeline endpoints with pipe()/dup2(), applies file redirections with
+ * open()/dup2(), executes the program with execvp(), and waits for all child
+ * processes before returning.
+ *
+ * @param cmd Parsed command produced by parser_parse().
+ * @return 0 if all children exit with status 0, -1 otherwise.
+ */
 int execute_pipeline(parsed_command_t *cmd) {
 	int num_stages;
 	int prev_read_fd;

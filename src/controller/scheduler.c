@@ -14,6 +14,11 @@ struct job_queue {
 	int size;
 };
 
+/**
+ * @brief Allocate an empty linked-list job queue.
+ *
+ * @return New queue pointer, or NULL on allocation failure.
+ */
 job_queue_t* queue_create() {
 	job_queue_t *q;
 
@@ -29,6 +34,11 @@ job_queue_t* queue_create() {
 	return q;
 }
 
+/**
+ * @brief Free all nodes in a queue and then free the queue object itself.
+ *
+ * @param q Queue to destroy. NULL is accepted.
+ */
 void queue_destroy(job_queue_t *q) {
 	job_node_t *curr;
 
@@ -46,6 +56,13 @@ void queue_destroy(job_queue_t *q) {
 	free(q);
 }
 
+/**
+ * @brief Append a job to the tail of a queue.
+ *
+ * @param q Queue that receives the new job.
+ * @param job Job data copied into the queue node.
+ * @return 1 on success, 0 on invalid input or allocation failure.
+ */
 int queue_enqueue(job_queue_t *q, const job_info_t *job) {
 	job_node_t *new_node;
 
@@ -73,6 +90,15 @@ int queue_enqueue(job_queue_t *q, const job_info_t *job) {
 	return 1;
 }
 
+/**
+ * @brief Remove the head of a queue.
+ *
+ * This is the primitive used by the FCFS policy.
+ *
+ * @param q Queue to remove from.
+ * @param out_job Destination for the removed job.
+ * @return 1 when a job is removed, 0 otherwise.
+ */
 int queue_dequeue(job_queue_t *q, job_info_t *out_job) {
 	job_node_t *old_head;
 
@@ -93,6 +119,13 @@ int queue_dequeue(job_queue_t *q, job_info_t *out_job) {
 	return 1;
 }
 
+/**
+ * @brief Remove a randomly selected job from a queue.
+ *
+ * @param q Queue to remove from.
+ * @param out_job Destination for the removed job.
+ * @return 1 when a job is removed, 0 otherwise.
+ */
 int queue_dequeue_random(job_queue_t *q, job_info_t *out_job) {
 	int target_idx;
 	job_node_t *prev;
@@ -129,6 +162,14 @@ int queue_dequeue_random(job_queue_t *q, job_info_t *out_job) {
 	return 1;
 }
 
+/**
+ * @brief Check if a user identifier is already present in an array.
+ *
+ * @param users Array of user identifiers.
+ * @param user_count Number of valid entries in users.
+ * @param user_id User identifier to find.
+ * @return 1 if present, 0 otherwise.
+ */
 static int user_exists(const int *users, int user_count, int user_id) {
 	for (int i = 0; i < user_count; i++) {
 		if (users[i] == user_id) {
@@ -139,6 +180,14 @@ static int user_exists(const int *users, int user_count, int user_id) {
 	return 0;
 }
 
+/**
+ * @brief Choose the next user in circular order from a compact user array.
+ *
+ * @param users Array of active users.
+ * @param user_count Number of users in the array.
+ * @param last_user_id User chosen in the previous scheduling decision.
+ * @return Next user identifier, or -1 if the array is empty.
+ */
 static int choose_next_user(const int *users, int user_count, int last_user_id) {
 	int last_idx;
 
@@ -161,6 +210,16 @@ static int choose_next_user(const int *users, int user_count, int last_user_id) 
 	return users[last_idx + 1];
 }
 
+/**
+ * @brief Choose the next active user according to the fair policy order.
+ *
+ * @param active_users Users that currently have queued jobs.
+ * @param active_user_count Number of active users.
+ * @param fair_users Global order of users seen by the controller.
+ * @param fair_user_count Number of entries in fair_users.
+ * @param last_user_id User selected in the previous scheduling decision.
+ * @return Next user identifier, or -1 if no active user exists.
+ */
 static int choose_next_fair_user(const int *active_users, int active_user_count, const int *fair_users, int fair_user_count, int last_user_id) {
 	int last_idx;
 
@@ -190,6 +249,16 @@ static int choose_next_fair_user(const int *active_users, int active_user_count,
 	return active_users[0];
 }
 
+/**
+ * @brief Remove the first queued job belonging to the next fair user.
+ *
+ * @param q Waiting queue to remove from.
+ * @param fair_users Global order of users seen by the controller.
+ * @param fair_user_count Number of entries in fair_users.
+ * @param last_user_id In/out last scheduled user identifier.
+ * @param out_job Destination for the removed job.
+ * @return 1 if a job was removed, 0 otherwise.
+ */
 int queue_dequeue_fair(job_queue_t *q, const int *fair_users, int fair_user_count, int *last_user_id, job_info_t *out_job) {
 	int *users;
 	int user_count;
@@ -250,6 +319,14 @@ int queue_dequeue_fair(job_queue_t *q, const int *fair_users, int fair_user_coun
 	return 0;
 }
 
+/**
+ * @brief Remove the job with the given command identifier.
+ *
+ * @param q Queue to search.
+ * @param command_id Command identifier to remove.
+ * @param out_job Destination for the removed job.
+ * @return 1 if the job was found and removed, 0 otherwise.
+ */
 int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_job) {
 	job_node_t *prev;
 	job_node_t *curr;
@@ -287,6 +364,12 @@ int queue_remove_by_command_id(job_queue_t *q, long command_id, job_info_t *out_
 	return 0;
 }
 
+/**
+ * @brief Check if a queue is empty.
+ *
+ * @param q Queue to inspect.
+ * @return 1 if empty or NULL, 0 otherwise.
+ */
 int queue_is_empty(const job_queue_t *q) {
 	if (q == NULL) {
 		return 1;
@@ -295,6 +378,12 @@ int queue_is_empty(const job_queue_t *q) {
 	return (q->size == 0) ? 1 : 0;
 }
 
+/**
+ * @brief Return the current queue size.
+ *
+ * @param q Queue to inspect.
+ * @return Number of jobs in the queue, or 0 if q is NULL.
+ */
 int queue_size(const job_queue_t *q) {
 	if (q == NULL) {
 		return 0;
@@ -303,6 +392,12 @@ int queue_size(const job_queue_t *q) {
 	return q->size;
 }
 
+/**
+ * @brief Return the current queue size.
+ *
+ * @param q Queue to inspect.
+ * @return Number of jobs in the queue, or 0 if q is NULL.
+ */
 int queue_get_size(const job_queue_t *q) {
 	if (q == NULL) {
 		return 0;
@@ -311,6 +406,14 @@ int queue_get_size(const job_queue_t *q) {
 	return q->size;
 }
 
+/**
+ * @brief Copy jobs from a queue into an array without modifying the queue.
+ *
+ * @param q Queue to copy.
+ * @param array Destination array.
+ * @param max_size Maximum number of jobs to copy.
+ * @return Number of jobs copied.
+ */
 int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size) {
 	const job_node_t *curr;
 	int copied;
@@ -330,6 +433,20 @@ int queue_copy_to_array(const job_queue_t *q, job_info_t *array, int max_size) {
 	return copied;
 }
 
+/**
+ * @brief Copy queued jobs in the order that fair scheduling would select them.
+ *
+ * This is used to present a coherent Scheduled section for runner -c without
+ * mutating the real waiting queue.
+ *
+ * @param q Waiting queue to simulate.
+ * @param array Destination array for the simulated order.
+ * @param max_size Maximum number of jobs to copy.
+ * @param last_user_id Last user selected by the real scheduler.
+ * @param fair_users Global user order remembered by the controller.
+ * @param fair_user_count Number of entries in fair_users.
+ * @return Number of jobs copied.
+ */
 int queue_copy_fair_to_array(const job_queue_t *q, job_info_t *array, int max_size, int last_user_id, const int *fair_users, int fair_user_count) {
 	job_info_t *jobs;
 	int *used;

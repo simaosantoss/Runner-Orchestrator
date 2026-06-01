@@ -17,6 +17,12 @@ struct parsed_command {
 	char buffer[PARSER_INPUT_BUFFER];
 };
 
+/**
+ * @brief Advance a string cursor over whitespace.
+ *
+ * @param cursor Current parsing position.
+ * @return First non-space position, or the string terminator.
+ */
 static const char* skip_spaces(const char *cursor) {
 	while (*cursor != '\0' && isspace((unsigned char)*cursor)) {
 		cursor++;
@@ -25,6 +31,13 @@ static const char* skip_spaces(const char *cursor) {
 	return cursor;
 }
 
+/**
+ * @brief Allocate a null-terminated copy of a string range.
+ *
+ * @param start Start of the range to copy.
+ * @param len Number of characters to copy.
+ * @return Newly allocated string, or NULL on allocation failure.
+ */
 static char* duplicate_range(const char *start, size_t len) {
 	char *copy;
 
@@ -38,6 +51,13 @@ static char* duplicate_range(const char *start, size_t len) {
 	return copy;
 }
 
+/**
+ * @brief Parse one token until whitespace or a redirection operator.
+ *
+ * @param cursor Current parsing position.
+ * @param out_token Destination for the allocated token.
+ * @return Position immediately after the token, or NULL on parse/allocation failure.
+ */
 static const char* parse_token(const char *cursor, char **out_token) {
 	const char *start;
 
@@ -59,6 +79,16 @@ static const char* parse_token(const char *cursor, char **out_token) {
 	return cursor;
 }
 
+/**
+ * @brief Parse one pipeline stage into argv and redirection fields.
+ *
+ * Operators are not stored in argv. Instead, their target filenames are stored
+ * in input_file, output_file or error_file.
+ *
+ * @param stage Stage structure to fill.
+ * @param stage_str Mutable string for this pipeline stage.
+ * @return 0 on success, -1 on parse/allocation failure.
+ */
 static int parse_stage(command_stage_t *stage, char *stage_str) {
 	const char *cursor;
 	int argc;
@@ -121,6 +151,12 @@ static int parse_stage(command_stage_t *stage, char *stage_str) {
 	return 0;
 }
 
+/**
+ * @brief Parse a full command string into a pipeline representation.
+ *
+ * @param input Command string received by the runner.
+ * @return Newly allocated parsed command, or NULL on failure.
+ */
 parsed_command_t* parser_parse(const char *input) {
 	parsed_command_t *parsed;
 	char *save_pipe = NULL;
@@ -155,6 +191,12 @@ parsed_command_t* parser_parse(const char *input) {
 	return parsed;
 }
 
+/**
+ * @brief Get the number of stages in a parsed pipeline.
+ *
+ * @param cmd Parsed command.
+ * @return Stage count, or 0 if cmd is NULL.
+ */
 int parser_get_stage_count(const parsed_command_t *cmd) {
 	if (cmd == NULL) {
 		return 0;
@@ -163,6 +205,13 @@ int parser_get_stage_count(const parsed_command_t *cmd) {
 	return cmd->stage_count;
 }
 
+/**
+ * @brief Get the argv array for a pipeline stage.
+ *
+ * @param cmd Parsed command.
+ * @param stage_idx Zero-based stage index.
+ * @return NULL-terminated argv array, or NULL if invalid.
+ */
 char** parser_get_stage_argv(const parsed_command_t *cmd, int stage_idx) {
 	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
 		return NULL;
@@ -171,6 +220,13 @@ char** parser_get_stage_argv(const parsed_command_t *cmd, int stage_idx) {
 	return (char **)cmd->stages[stage_idx].argv;
 }
 
+/**
+ * @brief Get the input redirection filename for a stage.
+ *
+ * @param cmd Parsed command.
+ * @param stage_idx Zero-based stage index.
+ * @return Input filename, or NULL if absent/invalid.
+ */
 const char* parser_get_input_file(const parsed_command_t *cmd, int stage_idx) {
 	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
 		return NULL;
@@ -179,6 +235,13 @@ const char* parser_get_input_file(const parsed_command_t *cmd, int stage_idx) {
 	return cmd->stages[stage_idx].input_file;
 }
 
+/**
+ * @brief Get the output redirection filename for a stage.
+ *
+ * @param cmd Parsed command.
+ * @param stage_idx Zero-based stage index.
+ * @return Output filename, or NULL if absent/invalid.
+ */
 const char* parser_get_output_file(const parsed_command_t *cmd, int stage_idx) {
 	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
 		return NULL;
@@ -187,6 +250,13 @@ const char* parser_get_output_file(const parsed_command_t *cmd, int stage_idx) {
 	return cmd->stages[stage_idx].output_file;
 }
 
+/**
+ * @brief Get the stderr redirection filename for a stage.
+ *
+ * @param cmd Parsed command.
+ * @param stage_idx Zero-based stage index.
+ * @return Error filename, or NULL if absent/invalid.
+ */
 const char* parser_get_error_file(const parsed_command_t *cmd, int stage_idx) {
 	if (cmd == NULL || stage_idx < 0 || stage_idx >= cmd->stage_count) {
 		return NULL;
@@ -195,6 +265,11 @@ const char* parser_get_error_file(const parsed_command_t *cmd, int stage_idx) {
 	return cmd->stages[stage_idx].error_file;
 }
 
+/**
+ * @brief Free a parsed command and every token allocated while parsing it.
+ *
+ * @param cmd Parsed command to destroy. NULL is accepted.
+ */
 void parser_destroy(parsed_command_t *cmd) {
 	int i;
 

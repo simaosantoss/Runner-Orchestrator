@@ -7,6 +7,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/**
+ * @brief Send an execution authorization to the runner that owns a job.
+ *
+ * @param job Job that is moving to the running queue.
+ */
 static void send_ack_to_runner(const job_info_t *job) {
 	char resp_fifo[128];
 	RpcMessage resp;
@@ -23,6 +28,14 @@ static void send_ack_to_runner(const job_info_t *job) {
 	}
 }
 
+/**
+ * @brief Notify a runner that the controller is already shutting down.
+ *
+ * This prevents new runners from blocking forever waiting for a normal ACK
+ * after shutdown has started.
+ *
+ * @param msg Submission message received after shutdown mode was entered.
+ */
 static void send_shutdown_ack_to_runner(const RpcMessage *msg) {
 	char resp_fifo[128];
 	RpcMessage resp;
@@ -39,10 +52,22 @@ static void send_shutdown_ack_to_runner(const RpcMessage *msg) {
 	}
 }
 
+/**
+ * @brief Check whether the configured scheduling policy is fair.
+ *
+ * @param state Controller state containing the policy name.
+ * @return 1 when the policy is "fair", 0 otherwise.
+ */
 static int is_fair_policy(const controller_state_t *state) {
 	return strcmp(state->policy, "fair") == 0;
 }
 
+/**
+ * @brief Register a user in the global order used by fair scheduling.
+ *
+ * @param state Controller state containing the dynamic fair user array.
+ * @param user_id User identifier to remember if not already present.
+ */
 static void remember_fair_user(controller_state_t *state, int user_id) {
 	for (int i = 0; i < state->fair_user_count; i++) {
 		if (state->fair_users[i] == user_id) {
@@ -74,6 +99,14 @@ static void remember_fair_user(controller_state_t *state, int user_id) {
 	state->fair_user_count++;
 }
 
+/**
+ * @brief Promote waiting jobs to running jobs while parallel capacity exists.
+ *
+ * The selected job depends on the configured scheduling policy. Each promoted
+ * job is moved to the running queue and receives an ACK through its runner FIFO.
+ *
+ * @param state Controller state containing queues, policy and counters.
+ */
 static void start_waiting_jobs(controller_state_t *state) {
 	while (state->running_count < state->parallel_limit && !queue_is_empty(state->waiting_queue)) {
 		job_info_t next_job;
@@ -103,6 +136,15 @@ static void start_waiting_jobs(controller_state_t *state) {
 	}
 }
 
+/**
+ * @brief Handle a command submission from a runner.
+ *
+ * The controller records the submission time, stores the job, and either starts
+ * it immediately or queues it depending on the current parallel limit.
+ *
+ * @param state Controller state to update.
+ * @param msg SUBMIT message received from a runner.
+ */
 static void handle_submit(controller_state_t *state, const RpcMessage *msg) {
 	job_info_t job;
 
@@ -131,6 +173,14 @@ static void handle_submit(controller_state_t *state, const RpcMessage *msg) {
 	}
 }
 
+/**
+ * @brief Persist the duration of a finished job in log.txt.
+ *
+ * Duration is measured as turnaround time from controller submission reception
+ * to controller reception of DONE.
+ *
+ * @param finished_job Job removed from the running queue.
+ */
 static void log_finished_job(const job_info_t *finished_job) {
 	struct timeval end_time;
 	long elapsed_ms;
@@ -148,6 +198,15 @@ static void log_finished_job(const job_info_t *finished_job) {
 	}
 }
 
+/**
+ * @brief Handle a DONE message from a runner.
+ *
+ * Removes the corresponding job from the running queue, writes the persistent
+ * log entry, frees one execution slot, and tries to start waiting jobs.
+ *
+ * @param state Controller state to update.
+ * @param msg DONE message received from a runner.
+ */
 static void handle_done(controller_state_t *state, const RpcMessage *msg) {
 	job_info_t finished_job;
 
@@ -162,6 +221,14 @@ static void handle_done(controller_state_t *state, const RpcMessage *msg) {
 	start_waiting_jobs(state);
 }
 
+/**
+ * @brief Write one status response message to a runner FIFO.
+ *
+ * @param fd_resp Open file descriptor of the runner response FIFO.
+ * @param status_resp Reusable STATUS_RESP message buffer.
+ * @param payload Text to place in the payload field.
+ * @return 0 on success, -1 on write failure.
+ */
 static int write_status_message(int fd_resp, RpcMessage *status_resp, const char *payload) {
 	snprintf(status_resp->payload, sizeof(status_resp->payload), "%s", payload);
 	if (write(fd_resp, status_resp, sizeof(RpcMessage)) != (ssize_t)sizeof(RpcMessage)) {
@@ -172,6 +239,14 @@ static int write_status_message(int fd_resp, RpcMessage *status_resp, const char
 	return 0;
 }
 
+/**
+ * @brief Send one formatted status line per job.
+ *
+ * @param fd_resp Open file descriptor of the runner response FIFO.
+ * @param status_resp Reusable STATUS_RESP message buffer.
+ * @param jobs Array of jobs to print.
+ * @param job_count Number of jobs in the array.
+ */
 static void write_status_jobs(int fd_resp, RpcMessage *status_resp, job_info_t *jobs, int job_count) {
 	for (int i = 0; i < job_count; i++) {
 		snprintf(status_resp->payload, sizeof(status_resp->payload), "user-id %d - command-id %ld\n", jobs[i].user_id, jobs[i].command_id);
@@ -182,6 +257,16 @@ static void write_status_jobs(int fd_resp, RpcMessage *status_resp, job_info_t *
 	}
 }
 
+/**
+ * @brief Handle a status query from a runner.
+ *
+ * Builds snapshots of the running and waiting queues, formats them into
+ * multiple fixed-size STATUS_RESP messages, and terminates the response with
+ * STATUS_END.
+ *
+ * @param state Controller state containing scheduler queues.
+ * @param msg STATUS_REQ message received from a runner.
+ */
 static void handle_status_req(controller_state_t *state, const RpcMessage *msg) {
 	char resp_fifo[128];
 	int fd_resp;
@@ -264,11 +349,23 @@ static void handle_status_req(controller_state_t *state, const RpcMessage *msg) 
 	close(fd_resp);
 }
 
+/**
+ * @brief Mark the controller as shutting down.
+ *
+ * @param state Controller state to update.
+ * @param msg SHUTDOWN_REQ message; its sender receives the final ACK.
+ */
 static void handle_shutdown_req(controller_state_t *state, const RpcMessage *msg) {
 	state->is_shutting_down = 1;
 	state->shutdown_requester_pid = msg->sender_pid;
 }
 
+/**
+ * @brief Finish shutdown if there are no running or waiting jobs.
+ *
+ * @param state Controller state to inspect and update.
+ * @return 1 if the controller should stop its main loop, 0 otherwise.
+ */
 static int try_finish_shutdown(controller_state_t *state) {
 	char resp_fifo[128];
 	RpcMessage ack;
@@ -285,6 +382,13 @@ static int try_finish_shutdown(controller_state_t *state) {
 	return 1;
 }
 
+/**
+ * @brief Initialize controller configuration from command-line arguments.
+ *
+ * @param state State object to initialize.
+ * @param argc Argument count passed to controller main().
+ * @param argv Argument vector passed to controller main().
+ */
 void controller_configure(controller_state_t *state, int argc, char *argv[]) {
 	memset(state, 0, sizeof(*state));
 	state->parallel_limit = 4;
@@ -311,6 +415,12 @@ void controller_configure(controller_state_t *state, int argc, char *argv[]) {
 	}
 }
 
+/**
+ * @brief Allocate the waiting and running queues used by the controller.
+ *
+ * @param state Controller state to initialize.
+ * @return 0 on success, -1 if either queue allocation fails.
+ */
 int controller_init_queues(controller_state_t *state) {
 	state->waiting_queue = queue_create();
 	state->running_queue = queue_create();
@@ -322,6 +432,11 @@ int controller_init_queues(controller_state_t *state) {
 	return 0;
 }
 
+/**
+ * @brief Release scheduler queues and fair-policy auxiliary memory.
+ *
+ * @param state Controller state to clean up.
+ */
 void controller_destroy_queues(controller_state_t *state) {
 	queue_destroy(state->waiting_queue);
 	queue_destroy(state->running_queue);
@@ -333,6 +448,13 @@ void controller_destroy_queues(controller_state_t *state) {
 	state->fair_user_capacity = 0;
 }
 
+/**
+ * @brief Dispatch one incoming controller message.
+ *
+ * @param state Controller state to update.
+ * @param msg Message received from the public FIFO.
+ * @return 1 if shutdown is complete and the main loop should stop, 0 otherwise.
+ */
 int controller_handle_message(controller_state_t *state, const RpcMessage *msg) {
 	if (msg->type == SUBMIT && state->is_shutting_down) {
 		send_shutdown_ack_to_runner(msg);

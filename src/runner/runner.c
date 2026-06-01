@@ -3,6 +3,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/**
+ * @brief Runner entry point.
+ *
+ * Parses the command-line mode and delegates to the corresponding runner
+ * operation: execute (-e), status (-c), or shutdown (-s).
+ *
+ * @param argc Number of command-line arguments.
+ * @param argv Runner arguments.
+ * @return Exit status of the selected runner operation.
+ */
 int main(int argc, char *argv[]) {
 	runner_request_t request;
 	int parse_result;
