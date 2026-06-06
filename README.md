@@ -1,8 +1,10 @@
 # 🧭 Runner-Orchestrator
 
-## 📌 About
+<p align="center">
+  <img src="https://img.shields.io/badge/Final%20Grade-17%2F20-brightgreen?style=for-the-badge" alt="Final Grade: 17/20">
+</p>
 
-**Runner-Orchestrator** is a multi-runner command orchestration environment developed for the Operating Systems course, a 2nd-year, 2nd-semester course in the Software Engineering degree at the University of Minho, academic year 2025/2026.
+> **Runner-Orchestrator** is a multi-runner command orchestration environment developed for the Operating Systems course, a 2nd-year, 2nd-semester course in the Software Engineering degree at the University of Minho, academic year 2025/2026.
 
 The goal was to build a Linux/POSIX system where multiple users submit shell-like commands through independent `runner` processes, while a central `controller` schedules those requests, enforces a configurable parallelism limit, keeps track of running and waiting commands, and shuts down in a controlled way.
 
